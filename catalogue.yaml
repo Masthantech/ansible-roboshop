@@ -1,0 +1,76 @@
+- name: configuring catalogue component
+  hosts: catalogue
+  become: yes
+  tasks:
+  - name: disabling nodejs old version
+    ansible.builtin.command: dnf module disable nodejs
+
+  - name: enabling nodejs new version
+    ansible.builtin.command: dnf module enable nodejs:20
+
+  - name: installing nodejs
+    ansible.builtin.dnf:
+      name: nodejs
+      state: present
+
+  - name: creating system user
+    ansible.builtin.user:
+      name: roboshop
+      shell: /sbin/nologin
+      system: true
+      comment: roboshop system user
+
+  - name: create app directory
+    ansible.builtin.file:
+      path: /app
+      state: directory 
+
+  - name: download application code
+    ansible.builtin.get_url:
+      url: https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip
+      dest: /tmp/catalogue.zip    
+
+  - name: unzip the application code in app directory
+    ansible.builtin.unarchive:
+      src: /tmp/catalogue.zip
+      dest: /app
+      remote_src: yes
+
+  - name: npm install
+    community.builtin.npm:
+      path: /app
+
+
+  - name: copy catalogue service file
+    ansible.builtin.copy:
+      src: catalogue.service
+      dest: /etc/systemd/system/catalogue.service
+
+      
+  - name: reload the deamon services
+    ansible.builtin.systemd_service:
+      deamon_reload: true   
+
+  - name: start and enable the catalogue service
+    ansible.builtin.service:
+      name: catalogue
+      state: started
+      enabled: yes
+
+  - name: copy mongo repo file
+    ansible.builtin.copy:
+      src: mongo.repo
+      dest: /etc/yum.repos.d/mongo.repo
+
+  - name: install mongodb client
+    ansible.builtin.dnf:
+      name: mongodb-mongosh
+      state: present
+
+  - name: checking the data is already loaded in database or not
+    ansible.builtin.command: mongosh --host mongodb.daws84s.site --eval 'db.getMongo().getDBNames().indexOf("catalogue")'   
+    register: command_output
+
+  - name: loading the data into database
+    ansible.built.shell: mongosh --host mongodb.daws84s.site </app/db/master-data.js
+  when: command_output.stdout() == int < 0                                    
