@@ -2,11 +2,29 @@
   hosts: catalogue
   become: yes
   tasks:
+  # - name: upgrade openssl packages
+  #   ansible.builtin.dnf:
+  #     name: "{{ item }}"
+  #     state: latest
+  #   loop:
+  #   - openssl
+  #   - openssl-libs
+  #   - openssh
+  #   - openssh-server
+  #   - openssh-clients
+
   - name: disable default nodejs
     ansible.builtin.command: dnf module disable nodejs -y
 
   - name: enable nodejs:24
     ansible.builtin.command: dnf module enable nodejs:20 -y
+
+  
+
+  - name: Install nodejs
+    ansible.builtin.dnf:
+      name: nodejs
+      state: present
 
   - name: upgrade openssl packages
     ansible.builtin.dnf:
@@ -17,13 +35,7 @@
     - openssl-libs
     - openssh
     - openssh-server
-    - openssh-clients
-
-
-  - name: Install nodejs
-    ansible.builtin.dnf:
-      name: nodejs
-      state: present
+    - openssh-clients    
       
   - name: create app directory
     ansible.builtin.file:
