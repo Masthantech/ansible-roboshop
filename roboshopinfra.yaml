@@ -4,7 +4,7 @@
   vars:
     ami_id: ami-0220d79f3f480ecf5
     sg_id: sg-0c26f52aa9e841505
-    env: "dev"
+    env: dev
     action: create
     domain_name: shaik.fun
     instances:
@@ -19,7 +19,6 @@
       instance_type: "t3.micro"
       image_id: "{{ ami_id }}"
       security_group: "{{ sg_id }}"
-      action: "{{ action }}"
       wait: true
       tags:
         Project: roboshop
