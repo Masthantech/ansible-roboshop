@@ -1,10 +1,7 @@
 - name: configure payment component
   hosts: payment
   become: yes
-  tasks: 
-
-  
-    
+  tasks:
   - name: install python packages
     ansible.builtin.dnf:
       name: "{{ item }}"

@@ -2,13 +2,13 @@
   hosts: frontend
   become: yes
   tasks:
-  - name: disable default nginx
-    ansible.builtin.command: dnf module disable nginx -y
+  - name: disable nginx default module
+    ansible.builtin.command: dnf module disable nginx -yes
 
-  - name: enable nginx
+  - name: enable nginx:1.24 module
     ansible.builtin.command: dnf module enable nginx:1.24 -y
 
-  - name: Install nginx
+  - name: install nginx
     ansible.builtin.dnf:
       name: nginx
       state: present
@@ -17,43 +17,49 @@
     ansible.builtin.service:
       name: nginx
       state: started
-      enabled: yes    
+      enabled: yes
 
-  - name: remove default html content in html directory
+  - name: remote the default html content
     ansible.builtin.file:
       path: /usr/share/nginx/html
       state: absent
 
-  - name: download frontend code
-    ansible.builtin.get_url:
-      url: https://roboshop-artifacts.s3.amazonaws.com/frontend-v3.zip
-      dest: /tmp/frontend.zip
-
-  - name: create html directory to save the frontend code
+  - name: create new html directory in same path
     ansible.builtin.file:
       path: /usr/share/nginx/html
       state: directory
 
-  - name: extract the frontend code into html directory
+  - name: download the frontend code
+    ansible.builtin.get_url:
+      url: https://roboshop-artifacts.s3.amazonaws.com/frontend-v3.zip
+      dest: /tmp/frontend.zip
+
+  - name: unzip the frontend code into html directory
     ansible.builtin.unarchive:
       src: /tmp/frontend.zip
-      dest: /usr/share/nginx/html 
-      remote_src: yes
+      dest: /usr/share/nginx/html  
 
-  - name: remove default nginx conf file 
+  # we have our custom nginx configuration. So we need to remove the old config and replace it with our custom config.
+  # we remove the current config file and copy new config in same path
+
+  - name: remove the default nginx conf
     ansible.builtin.file:
-      path: /etc/nginx/nginx.conf
-      state: absent    
+      path: /etc/nginx/nginx.conf     
+      state: absent
 
-  - name: copy custom nginx conf file
+  - name: copy new nginx conf file
     ansible.builtin.copy:
       src: nginx.conf
-      dest: /etc/nginx/nginx.conf    
+      dest: /etc/nginx/nginx.conf
 
-  - name: restart nginx
+  - name: restart nginx service
     ansible.builtin.service:
       name: nginx
       state: restarted
+
+
+      
+               
 
 
 

@@ -12,21 +12,19 @@
   #   - openssh
   #   - openssh-server
   #   - openssh-clients
-
-  - name: disable default nodejs
+  
+  - name: disabling default nodejs module
     ansible.builtin.command: dnf module disable nodejs -y
 
-  - name: enable nodejs:24
-    ansible.builtin.command: dnf module enable nodejs:20 -y
+  - name: enabling nodejs:20 module
+    ansible.builtin.command: dnf module enable nodejs:20 -y 
 
-  
-
-  - name: Install nodejs
+  - name: install nodejs module
     ansible.builtin.dnf:
-      name: nodejs
+      name: nodejs    
       state: present
 
-  - name: upgrade openssl packages
+  - name: upgrade openssl packages to latest version
     ansible.builtin.dnf:
       name: "{{ item }}"
       state: latest
@@ -36,60 +34,132 @@
     - openssh
     - openssh-server
     - openssh-clients    
-      
+
+  - name: create a system user for the app
+    ansible.builtin.user:
+      name: roboshop
+      system: true
+      home: /app
+      shell: /sbin/nologin
+      comment: "roboshop system user"    
+
+# we are removing the /app folder assuming its alredy present or we are configuring catalogue with new version, so we must remove old code
+  - name: remove app directory
+    ansible.builtin.file:
+      path: /app
+      state: absent
+  
   - name: create app directory
     ansible.builtin.file:
       path: /app
-      state: directory
+      state: directory    
 
-  - name: create roboshop system user
-    ansible.builtin.user:
-      name: roboshop
-      shell: /sbin/nologin
-      system: true
-      home: /app
+# we are removing old catalouge.zip file as well to load new version code
+  - name: remove catalogue.zip file
+    ansible.builtin.file:
+      path: /tmp/catalogue.zip
+      state: absent
 
-  - name: download catalogue code
+  - name: download app code
     ansible.builtin.get_url:
-      url: https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip 
+      url: https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip
       dest: /tmp/catalogue.zip
 
-  # this module thinks file exist on ansible control server, needs to extract on to remote machine
-  # remote_src: yes means files already exist in catalogue server
-  - name: extract catalogue code
+# this module by default thinks file exist in ansible server, needs to extract to remote machine
+# remote_src: yes, means file alredy exists in catalogue server 
+  - name: unzip the app code
     ansible.builtin.unarchive:
       src: /tmp/catalogue.zip
       dest: /app
       remote_src: yes
 
-  - name: install dependencies
+
+  - name: install the npm package for the application
     community.general.npm:
       path: /app
 
-  - name: copy catalogue service to system directory
+  - name: copy the systemd service file
     ansible.builtin.copy:
       src: catalogue.service
       dest: /etc/systemd/system/catalogue.service
-
-  - name: systemctl deamon reload
+      
+  - name: reload the systemd service
     ansible.builtin.systemd_service:
-      daemon_reload: true
+      daemon_reload: true  
 
-  - name: start and enable catalogue
+  - name: start and enable the catalogue servive
     ansible.builtin.service:
       name: catalogue
       state: started
       enabled: yes
 
-  - name: copy mongodb repo
+  - name: copy the mongo repo file
     ansible.builtin.copy:
       src: mongo.repo
       dest: /etc/yum.repos.d/mongo.repo
 
-  - name: install mongodb client
+  - name: install mongodb clients
     ansible.builtin.dnf:
       name: mongodb-mongosh
       state: present
+      
+# before loading the products into db we need to check the products are alredy in bd or not. So we check the produts db present or not
+# we are using the ansible command module
+  - name: check the products are loaded into database or not 
+    ansible.builtin.command: mongosh --host mongodb.shaik.fun --eval 'db.getMongo().getDBNames().indexof("catalogue")'    
+    register: catalogue_output
+
+  - name: print he catalogue output
+    ansible.builtin.debug:
+      msg: "{{ catalogue_output }}"
+
+  - name: load the products into database
+    ansible.builtin.shell: mongosh --host mongodb.shaik.fun </app/db/master-data.js
+    when: catalogue_output.stdout | int < 0    
+
+
+  - name: start and enable the catalogue servive
+    ansible.builtin.service:
+      name: catalogue
+      state: restarted
+      enabled: yes
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # this module thinks file exist on ansible control server, needs to extract on to remote machine
+  # remote_src: yes means files already exist in catalogue server
+ 
 
   - name: check products loaded or not
     ansible.builtin.command: mongosh --host mongodb.shaik.fun --eval 'db.getMongo().getDBNames().indexOf("catalogue")'

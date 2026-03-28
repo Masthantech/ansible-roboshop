@@ -1,32 +1,32 @@
-- name: installing mongodb on linuxserver
+- name: configure mongodb server
   hosts: mongodb
   become: yes
-  tasks:
+  tasks: 
   - name: copy mongo repo file
     ansible.builtin.copy:
       src: mongo.repo
       dest: /etc/yum.repos.d/mongo.repo
 
-  - name: install mongodb 
+  - name: install mongodb server
     ansible.builtin.dnf:
       name: mongodb-org
       state: present
 
-  - name: start and enable mongodb
+  - name: start and enable mongod service
     ansible.builtin.service:
       name: mongod
       state: started
       enabled: yes
 
-  - name: edit mongod conf file allow connections
+  - name: edit mongod conft file to allow remote connections
     ansible.builtin.replace:
       path: /etc/mongod.conf
       regexp: '127.0.0.1'
-      replace: 0.0.0.0
+      replace: '0.0.0.0' 
 
   - name: restart mongod service
     ansible.builtin.service:
       name: mongod
-      state: restarted                
+      state: restarted                            
       
                     
